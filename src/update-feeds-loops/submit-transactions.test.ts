@@ -104,6 +104,7 @@ describe(submitTransactionsModule.createUpdateFeedCalldatas.name, () => {
             },
           ],
         },
+        shouldUpdateBeaconSet: true,
       })
     );
 
@@ -170,6 +171,7 @@ describe(submitTransactionsModule.createUpdateFeedCalldatas.name, () => {
             },
           ],
         },
+        shouldUpdateBeaconSet: true,
       })
     );
 
@@ -187,6 +189,52 @@ describe(submitTransactionsModule.createUpdateFeedCalldatas.name, () => {
         '0xf5c140bcb4814dfec311d38f6293e86c02d32ba1b7da027fe5b5202cae35dbc7',
         '0xf5c140bcb4814dfec311d38f6293e86c02d32ba1b7da027fe5b5202cae35dbc8',
       ],
+    ]);
+  });
+
+  it('only creates calldata for some beacons updatable', () => {
+    const api3ServerV1 = generateMockApi3ServerV1();
+    jest.spyOn(api3ServerV1.interface, 'encodeFunctionData');
+
+    submitTransactionsModule.createUpdateFeedCalldatas(
+      api3ServerV1 as unknown as Api3ServerV1,
+      allowPartial<UpdatableDataFeed>({
+        updatableBeacons: [
+          {
+            beaconId: '0xf5c140bcb4814dfec311d38f6293e86c02d32ba1b7da027fe5b5202cae35dbc8',
+            signedData: {
+              airnode: '0xAirnode-3',
+              signature: 'some-signature-3',
+              templateId: '0xTemplate-3',
+              encodedValue: '0x0000000000000000000000000000000000000000000000000000000000000270',
+              timestamp: '400',
+            },
+          },
+        ],
+        dataFeedInfo: {
+          beaconsWithData: [
+            {
+              beaconId: '0xf5c140bcb4814dfec311d38f6293e86c02d32ba1b7da027fe5b5202cae35dbc6',
+            },
+            {
+              beaconId: '0xf5c140bcb4814dfec311d38f6293e86c02d32ba1b7da027fe5b5202cae35dbc7',
+            },
+            {
+              beaconId: '0xf5c140bcb4814dfec311d38f6293e86c02d32ba1b7da027fe5b5202cae35dbc8',
+            },
+          ],
+        },
+        shouldUpdateBeaconSet: false,
+      })
+    );
+
+    expect(api3ServerV1.interface.encodeFunctionData).toHaveBeenCalledTimes(1);
+    expect(api3ServerV1.interface.encodeFunctionData).toHaveBeenCalledWith('updateBeaconWithSignedData', [
+      '0xAirnode-3',
+      '0xTemplate-3',
+      '400',
+      '0x0000000000000000000000000000000000000000000000000000000000000270',
+      'some-signature-3',
     ]);
   });
 });

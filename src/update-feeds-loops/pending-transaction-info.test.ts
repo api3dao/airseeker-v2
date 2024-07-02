@@ -5,7 +5,7 @@ import { allowPartial } from '../../test/utils';
 import { logger } from '../logger';
 import * as stateModule from '../state';
 
-import type { DecodedActiveDataFeedResponse } from './contracts';
+import type { BeaconWithData, DecodedActiveDataFeedResponse } from './contracts';
 import type { UpdatableDataFeed } from './get-updatable-feeds';
 import {
   initializePendingTransactionsInfo,
@@ -87,6 +87,7 @@ describe(updatePendingTransactionsInfo.name, () => {
           decodedDapiName: 'decodedDapiName',
           updateParameters: '0xUpdateParameters',
           dataFeedTimestamp: 1_696_930_907n, // The current data feed on-chain timestamp is different.
+          beaconsWithData: [allowPartial<BeaconWithData>({})],
         },
       ]),
       allowPartial<UpdatableDataFeed[]>([
@@ -95,6 +96,7 @@ describe(updatePendingTransactionsInfo.name, () => {
             dapiName: '0xDapiName',
             dataFeedId,
           },
+          shouldUpdateBeaconSet: false,
         },
       ])
     );
@@ -116,5 +118,66 @@ describe(updatePendingTransactionsInfo.name, () => {
       firstUpdatableTimestamp: Math.floor(now / 1000),
       onChainTimestamp: 1_696_930_907n,
     });
+  });
+
+  it('skips resetting the pending transaction info if the data feed is a beacon set that only updates its beacons', () => {
+    jest.spyOn(logger, 'warn');
+    const initialState = allowPartial<stateModule.State>({
+      config: {},
+      pendingTransactionsInfo: {
+        [chainId]: {
+          [providerName]: {
+            [sponsorWalletAddress]: {
+              [dataFeedId]: {
+                consecutivelyUpdatableCount: 2,
+                firstUpdatableTimestamp: timestampMock,
+                onChainTimestamp: 1_696_930_906n,
+              },
+            },
+          },
+        },
+      },
+    });
+    jest.spyOn(stateModule, 'getState').mockReturnValue(initialState);
+    jest
+      .spyOn(submitTransactionsModule, 'getDerivedSponsorWallet')
+      .mockReturnValue({ address: sponsorWalletAddress } as ethers.Wallet);
+    const now = Date.now();
+    jest.useFakeTimers().setSystemTime(now);
+
+    updatePendingTransactionsInfo(
+      chainId,
+      providerName,
+      allowPartial<DecodedActiveDataFeedResponse[]>([
+        {
+          dapiName: '0xDapiName',
+          dataFeedId,
+          decodedDapiName: 'decodedDapiName',
+          updateParameters: '0xUpdateParameters',
+          dataFeedTimestamp: 1_696_930_907n, // The current data feed on-chain timestamp is different.
+          beaconsWithData: [allowPartial<BeaconWithData>({}), allowPartial<BeaconWithData>({})],
+        },
+      ]),
+      allowPartial<UpdatableDataFeed[]>([
+        {
+          dataFeedInfo: {
+            dapiName: '0xDapiName',
+            dataFeedId,
+          },
+          shouldUpdateBeaconSet: false,
+        },
+      ])
+    );
+
+    // We expect the pending transaction info to remain the same.
+    expect(stateModule.getState().pendingTransactionsInfo).toStrictEqual(initialState.pendingTransactionsInfo);
+    expect(logger.warn).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Data feed is a beacon set that does not require an update but some of its beacons do. Skipping pending transaction info update.',
+      {
+        dapiName: 'decodedDapiName',
+        dataFeedId,
+      }
+    );
   });
 });

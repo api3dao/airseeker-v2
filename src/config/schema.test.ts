@@ -9,6 +9,7 @@ import {
   chainsSchema,
   configSchema,
   deviationThresholdCoefficientSchema,
+  asyncBeaconUpdatedeviationThresholdFactorSchema,
   walletDerivationSchemeSchema,
 } from './schema';
 
@@ -28,15 +29,15 @@ test('validates example config', () => {
   expect(() => configSchema.parse(exampleConfig)).toThrow(
     new ZodError([
       {
-        code: 'custom',
-        message: 'Invalid mnemonic',
-        path: ['sponsorWalletMnemonic'],
-      },
-      {
         validation: 'url',
         code: 'invalid_string',
         message: 'Invalid url',
         path: ['chains', '31337', 'providers', 'hardhat', 'url'],
+      },
+      {
+        code: 'custom',
+        message: 'Invalid mnemonic',
+        path: ['sponsorWalletMnemonic'],
       },
     ])
   );
@@ -202,6 +203,36 @@ describe('chains schema', () => {
           code: 'custom',
           message: 'Invalid deviationThresholdCoefficient. A maximum of 2 decimals are supported.',
           path: ['deviationThresholdCoefficient'],
+        },
+      ])
+    );
+  });
+
+  it('throws on asyncBeaconUpdatedeviationThresholdFactor that is not an integer', () => {
+    expect(() => asyncBeaconUpdatedeviationThresholdFactorSchema.parse(1.234)).toThrow(
+      new ZodError([
+        {
+          code: 'invalid_type',
+          expected: 'integer',
+          received: 'float',
+          message: 'Expected integer, received float',
+          path: [],
+        },
+      ])
+    );
+  });
+
+  it('throws on asyncBeaconUpdatedeviationThresholdFactor that is not a positive integer', () => {
+    expect(() => asyncBeaconUpdatedeviationThresholdFactorSchema.parse(0)).toThrow(
+      new ZodError([
+        {
+          code: 'too_small',
+          minimum: 0,
+          type: 'number',
+          inclusive: false,
+          exact: false,
+          message: 'Number must be greater than 0',
+          path: [],
         },
       ])
     );

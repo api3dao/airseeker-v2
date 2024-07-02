@@ -112,6 +112,7 @@ it('updates blockchain data', async () => {
             signedData: krakenBtcSignedData,
           },
         ],
+        shouldUpdateBeaconSet: true,
       },
     ],
     blockNumber

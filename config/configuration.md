@@ -201,6 +201,19 @@ The global coefficient applied to all deviation checks. Used to differentiate al
 
 Defaults to `1`.
 
+#### `asyncBeaconUpdatedeviationThresholdFactor` _(optional)_
+
+The global deviation factor applied to async beacon updates deviation checks. When configured, this value will be used
+on beacons sets that don't require an update but some of its beacon constituents do. So if a beacon set has a 1%
+deviation threshold, Airseeker will only update its beacons when deviation of each beacon exeeds (1 \*
+asyncBeaconUpdatedeviationThresholdFactor)%. For example:
+
+```jsonc
+"asyncBeaconUpdatedeviationThresholdFactor": 5,
+```
+
+Defaults to `1`.
+
 #### `heartbeatIntervalModifier` _(optional)_
 
 The global modifier applied to all heartbeat checks. The value is specified in seconds and can be positive or negative.

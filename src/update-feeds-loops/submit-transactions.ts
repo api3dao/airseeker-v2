@@ -17,7 +17,7 @@ import { estimateMulticallGasLimit, estimateSingleBeaconGasLimit } from './gas-e
 import type { UpdatableDataFeed } from './get-updatable-feeds';
 
 export const createUpdateFeedCalldatas = (api3ServerV1: Api3ServerV1, updatableDataFeed: UpdatableDataFeed) => {
-  const { dataFeedInfo, updatableBeacons } = updatableDataFeed;
+  const { dataFeedInfo, updatableBeacons, shouldUpdateBeaconSet } = updatableDataFeed;
   const allBeacons = dataFeedInfo.beaconsWithData;
 
   // Create calldata for beacons that need to be updated.
@@ -31,8 +31,8 @@ export const createUpdateFeedCalldatas = (api3ServerV1: Api3ServerV1, updatableD
     ])
   );
 
-  // If there are multiple beacons in the data feed it's a beacons set which we need to update as well.
-  return allBeacons.length > 1
+  // If there are multiple beacons in the data feed it's a beacons set which we may need to update as well.
+  return allBeacons.length > 1 && shouldUpdateBeaconSet
     ? [
         ...beaconUpdateCalls,
         api3ServerV1.interface.encodeFunctionData('updateBeaconSetWithBeacons', [

@@ -157,6 +157,12 @@ export const deviationThresholdCoefficientSchema = z
 
 export type DeviationThresholdCoefficient = z.infer<typeof deviationThresholdCoefficientSchema>;
 
+export const asyncBeaconUpdatedeviationThresholdFactorSchema = z.number().int().positive().optional();
+
+export type AsyncBeaconUpdatedeviationThresholdFactorSchema = z.infer<
+  typeof asyncBeaconUpdatedeviationThresholdFactorSchema
+>;
+
 export const heartbeatIntervalModifierSchema = z.number().default(0);
 
 export type HeartbeatIntervalModifier = z.infer<typeof heartbeatIntervalModifierSchema>;
@@ -171,19 +177,20 @@ export type WalletDerivationScheme = z.infer<typeof walletDerivationSchemeSchema
 
 export const configSchema = z
   .object({
-    sponsorWalletMnemonic: z
-      .string()
-      .refine((mnemonic) => ethers.Mnemonic.isValidMnemonic(mnemonic), 'Invalid mnemonic'),
+    asyncBeaconUpdatedeviationThresholdFactor: asyncBeaconUpdatedeviationThresholdFactorSchema,
     chains: chainsSchema,
-    signedDataFetchInterval: z.number().positive(),
     deviationThresholdCoefficient: deviationThresholdCoefficientSchema,
     heartbeatIntervalModifier: heartbeatIntervalModifierSchema,
     signedApiUrls: z.array(z.string().url()),
-    walletDerivationScheme: walletDerivationSchemeSchema,
+    signedDataFetchInterval: z.number().positive(),
+    sponsorWalletMnemonic: z
+      .string()
+      .refine((mnemonic) => ethers.Mnemonic.isValidMnemonic(mnemonic), 'Invalid mnemonic'),
     stage: z
       .string()
       .regex(/^[\da-z-]{1,256}$/, 'Only lowercase letters, numbers and hyphens are allowed (max 256 characters)'),
     version: z.string().refine((version) => version === packageVersion, 'Invalid Airseeker version'),
+    walletDerivationScheme: walletDerivationSchemeSchema,
   })
   .strict();
 

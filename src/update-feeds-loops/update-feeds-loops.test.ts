@@ -479,7 +479,7 @@ describe(updateFeedsLoopsModule.processBatch.name, () => {
     jest.spyOn(logger, 'warn');
     jest.spyOn(logger, 'info');
 
-    const feeds = getUpdatableFeedsModule.getUpdatableFeeds([activeDataFeed], 2, 0);
+    const feeds = getUpdatableFeedsModule.getUpdatableFeeds([activeDataFeed], 2, 0, undefined);
 
     expect(logger.warn).toHaveBeenCalledTimes(0);
     expect(feeds).toStrictEqual([]);

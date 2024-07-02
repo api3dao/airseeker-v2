@@ -72,7 +72,7 @@ describe(getUpdatableFeeds.name, () => {
       },
     ]);
 
-    const checkFeedsResult = getUpdatableFeeds(batch, 1, 0);
+    const checkFeedsResult = getUpdatableFeeds(batch, 1, 0, undefined);
 
     expect(logger.info).toHaveBeenCalledTimes(1);
     expect(logger.info).toHaveBeenCalledWith(`Deviation exceeded.`);
@@ -140,7 +140,7 @@ describe(getUpdatableFeeds.name, () => {
       },
     ]);
 
-    getUpdatableFeeds(batch, 1, heartbeatIntervalModifier);
+    getUpdatableFeeds(batch, 1, heartbeatIntervalModifier, undefined);
     expect(deviationCheckModule.checkUpdateCondition).toHaveBeenCalledWith(400n, 199n, 400n, 500n, 5n, ONE_PERCENT, 0n);
   });
 
@@ -190,7 +190,7 @@ describe(getUpdatableFeeds.name, () => {
       },
     ]);
 
-    getUpdatableFeeds(batch, 1, heartbeatIntervalModifier);
+    getUpdatableFeeds(batch, 1, heartbeatIntervalModifier, undefined);
     expect(logger.warn).toHaveBeenCalledTimes(1);
     expect(logger.warn).toHaveBeenCalledWith(`Resulting heartbeat interval is negative. Setting it to 0.`, {
       dapiName: 'test',
@@ -244,7 +244,7 @@ describe(getUpdatableFeeds.name, () => {
       },
     ]);
 
-    const checkFeedsResult = getUpdatableFeeds(batch, 1, 0);
+    const checkFeedsResult = getUpdatableFeeds(batch, 1, 0, undefined);
 
     expect(logger.info).toHaveBeenCalledTimes(1);
     expect(logger.info).toHaveBeenCalledWith(`On-chain timestamp is older than the heartbeat interval.`);
@@ -319,7 +319,7 @@ describe(getUpdatableFeeds.name, () => {
     ]);
     jest.spyOn(logger, 'warn');
 
-    const checkFeedsResult = getUpdatableFeeds(batch, 1, 0);
+    const checkFeedsResult = getUpdatableFeeds(batch, 1, 0, undefined);
 
     expect(logger.warn).toHaveBeenCalledTimes(0);
     expect(checkFeedsResult).toStrictEqual([]);
@@ -368,7 +368,7 @@ describe(getUpdatableFeeds.name, () => {
       },
     ]);
 
-    const checkFeedsResult = getUpdatableFeeds(batch, 1, 0);
+    const checkFeedsResult = getUpdatableFeeds(batch, 1, 0, undefined);
 
     expect(logger.info).toHaveBeenCalledTimes(0);
     expect(checkFeedsResult).toStrictEqual([]);
@@ -408,7 +408,7 @@ describe(getUpdatableFeeds.name, () => {
       },
     ]);
 
-    const checkFeedsResult = getUpdatableFeeds(batch, 1, 0);
+    const checkFeedsResult = getUpdatableFeeds(batch, 1, 0, undefined);
 
     expect(logger.info).toHaveBeenCalledTimes(0);
     expect(checkFeedsResult).toStrictEqual([]);
@@ -457,7 +457,7 @@ describe(getUpdatableFeeds.name, () => {
       },
     ]);
 
-    const checkFeedsResult = getUpdatableFeeds(batch, 1, 0);
+    const checkFeedsResult = getUpdatableFeeds(batch, 1, 0, undefined);
 
     expect(logger.info).toHaveBeenCalledTimes(0);
     expect(checkFeedsResult).toStrictEqual([]);
@@ -506,7 +506,7 @@ describe(getUpdatableFeeds.name, () => {
       },
     ]);
 
-    const checkFeedsResult = getUpdatableFeeds(batch, 1, 0);
+    const checkFeedsResult = getUpdatableFeeds(batch, 1, 0, undefined);
 
     expect(logger.info).toHaveBeenCalledTimes(1);
     expect(logger.info).toHaveBeenCalledWith(`Deviation exceeded.`);
@@ -572,17 +572,77 @@ describe(getUpdatableFeeds.name, () => {
       },
     ]);
 
-    const updatableFeeds = getUpdatableFeeds(batch, 1, 0);
+    const updatableFeeds = getUpdatableFeeds(batch, 1, 0, undefined);
 
     expect(updatableFeeds).toStrictEqual([]);
     expect(logger.warn).toHaveBeenCalledTimes(2);
-    expect(logger.warn).toHaveBeenCalledWith(`Not using the the signed data because it's older than 24 hours.`, {
+    expect(logger.warn).toHaveBeenCalledWith(`Not using the signed data because it's older than 24 hours.`, {
       airnode: '0xC04575A2773Da9Cd23853A69694e02111b2c4182',
       templateId: '0xe6df5fb43a0b3a65ac1b05e7e50fba03b475fe5b721693d469554278086fd2e4',
     });
-    expect(logger.warn).toHaveBeenCalledWith(`Not using the the signed data because it's older than 24 hours.`, {
+    expect(logger.warn).toHaveBeenCalledWith(`Not using the signed data because it's older than 24 hours.`, {
       airnode: '0xbF3137b0a7574563a23a8fC8badC6537F98197CC',
       templateId: '0x6f0c2b5c6420d1896e67e56539ccbec5e6aafee5c27f6eb8783b9731faa7205d',
     });
+  });
+
+  it('returns updatable feeds with beacons that need to be udpated based on asyncBeaconUpdatedeviationThresholdFactor config property', () => {
+    jest.useFakeTimers().setSystemTime(90 * 1000);
+
+    // Only the second and third feed will satisfy the timestamp check
+    const mockSignedDataState = allowPartial<Record<string, SignedData>>({
+      [feedIds[0]]: {
+        timestamp: '155',
+        encodedValue: encodeBeaconValue('200'),
+      },
+      [feedIds[1]]: {
+        timestamp: '165',
+        encodedValue: encodeBeaconValue('500'),
+      },
+      [feedIds[2]]: {
+        timestamp: '175',
+        encodedValue: encodeBeaconValue('600'),
+      },
+    });
+    jest
+      .spyOn(signedDataStateModule, 'getSignedData')
+      .mockImplementation((dataFeedId: string) => mockSignedDataState[dataFeedId]!);
+    jest.spyOn(logger, 'info');
+
+    const timestamps = [150n, 160n, 170n];
+    const values = [400n, 500n, 600n];
+    const batch = allowPartial<contractsModule.DecodedActiveDataFeedResponse[]>([
+      {
+        decodedUpdateParameters: {
+          deviationThresholdInPercentage: ONE_PERCENT,
+          heartbeatInterval: 100n,
+          deviationReference: 0n,
+        },
+        dataFeedValue: deviationCheckModule.calculateMedian(values),
+        dataFeedTimestamp: deviationCheckModule.calculateMedian(timestamps),
+        beaconsWithData: range(values.length).map((i) => ({
+          beaconId: feedIds[i]!,
+          timestamp: timestamps[i]!,
+          value: values[i]!,
+        })),
+        dataFeedId: '0x000',
+        dapiName: encodeDapiName('test'),
+      },
+    ]);
+
+    const checkFeedsResult = getUpdatableFeeds(batch, 1, 0, 5);
+
+    expect(logger.info).toHaveBeenCalledTimes(1);
+    expect(logger.info).toHaveBeenCalledWith(`Deviation exceeded.`);
+    expect(checkFeedsResult).toHaveLength(1);
+    expect(checkFeedsResult[0]!.updatableBeacons).toStrictEqual([
+      {
+        beaconId: '0xf5c140bcb4814dfec311d38f6293e86c02d32ba1b7da027fe5b5202cae35dbc6',
+        signedData: {
+          encodedValue: '0x00000000000000000000000000000000000000000000000000000000000000c8',
+          timestamp: '155',
+        },
+      },
+    ]);
   });
 });
